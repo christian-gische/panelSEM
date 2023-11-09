@@ -1,0 +1,393 @@
+---
+title: "The panelSEM Package"
+author: "Christian Gische"
+output: github_document
+bibliography: man/bibliography.bib
+csl: man/apa.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+## Installing the Package
+
+The current version of the `panelSEM` package can be found on
+[GitHub](https://github.com/christian-gische/panelSEM) and can be
+installed directly via `RStudio` using the following code:[^1]
+
+[^1]: <https://github.com/christian-gische/panelSEM>
+
+```{r,  eval = FALSE}
+# install the causalSEM package from GitHub
+devtools::install_github("christian-gische/panelSEM")
+
+# load lavaan and OpenMx
+library(lavaan)
+library(OpenMx)
+```
+
+## Purpose of the Package
+
+The purpose of the package is to fit dynamic panel data models to data
+and obtain parameter estimates. The class of models that can be
+estimated ranges from simple linear models (e.g., the cross-lagged panel
+model) to complex nonlinear nonadditive models with observed and
+unobserved effect heterogeneity. The following figures display the
+causal graphs of three prototypical models with increasing complexity.
+
+### Linear Model without Unobserved Heterogeneity
+
+The following figure displays the causal structure of a linear
+cross-lagged panel model and is taken from @gische_beyond_2022.
+
+```{tikz, fig.ext = 'png', echo = FALSE}
+\usetikzlibrary{shapes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{arrows.meta}
+\begin{tikzpicture}
+\node (t1) at (8,0) {blood insulin};
+\node (t2) at (8,-3) {blood glucose};   
+             
+\node (x1) at (0,0) {$X_{1}$};
+\node (x3) at (3,0) {$X_{2}$};          
+\node (x5) at (6,0) {$X_{3}$};
+
+\node (x2) at (0,-3) {$Y_{1}$};
+\node (x4) at (3,-3) {$Y_{2}$};
+\node (x6) at (6,-3) {$Y_{3}$};
+
+\draw[->] (x1) to node[above,near start,sloped]{\small $c_{xx}$} (x3); 
+\draw[->] (x1) to node[above,near start,sloped]{\small $c_{yx}$} (x4);  
+\draw[->] (x3) to node[above,near start,sloped]{\small $c_{xx}$} (x5);
+\draw[->] (x3) to node[above,near start,sloped]{\small $c_{yx}$} (x6);\draw[->] (x2) to node[below,near start,sloped]{\small $c_{xy}$} (x3); 
+\draw[->] (x2) to node[below,near start,sloped]{\small $c_{yy}$} (x4);  
+\draw[->] (x4) to node[below,near start,sloped]{\small $c_{xy}$} (x5);
+\draw[->] (x4) to node[below,near start,sloped]{\small $c_{yy}$} (x6);
+
+\draw[<->,bend right=20,dashed] (x1) to node[left]{\small $\psi_{x_1y_1}$} (x2);
+\draw[<->,bend left=60,dashed] (x1) to node[above]{\small $\psi_{x_1x_2}$} (x3);
+\draw[<->,bend left=60,dashed] (x3) to node[above]{\small $\psi_{x_2x_3}$} (x5);
+\draw[<->,bend right=60,dashed] (x2) to node[below]{\small $\psi_{y_1y_2}$} (x4);
+\draw[<->,bend right=60,dashed] (x4) to node[below]{\small $\psi_{y_2y_3}$} (x6);
+
+\draw[<->,bend right=20,dashed] (x3) to node[right]{\small $\psi_{xy}$} (x4);
+\draw[<->,bend right=20,dashed] (x5) to node[right]{\small $\psi_{xy}$} (x6);
+
+\end{tikzpicture}
+```
+
+### Linear Model with Additive Unobserved Heterogeneity
+
+The following figure displays the causal structure of a dynamic panel
+data model with additive heterogeneity and is taken from
+@gische_west_voelkle_2021.
+
+```{tikz, fig.ext = 'png', echo = FALSE}
+\usetikzlibrary{shapes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{arrows.meta}
+\begin{tikzpicture}[latent/.style={ellipse,draw=black!80,dashed,thick,inner sep=2,text centered}]
+     
+\node (x1) at (0,0) {$X_{1}$};
+\node (x2) at (3,0) {$X_{2}$};          
+\node (x3) at (6,0) {$X_{3}$};
+\node (x4) at (9,0) {$X_{4}$};
+    
+\node (y1) at (0,-3) {$Y_{1}$};
+\node (y2) at (3,-3) {$Y_{2}$};
+\node (y3) at (6,-3) {$Y_{3}$};
+\node (y4) at (9,-3) {$Y_{4}$};
+
+\draw[->] (x1) to node[above,midway,sloped]{} (x2); 
+\draw[->] (x1) to node[above,near start,sloped]{} (y2); 
+\draw[->] (x2) to node[above,midway,sloped]{} (x3);
+\draw[->] (x2) to node[above,near start,sloped]{} (y3); 
+\draw[->] (x3) to node[above,near start,sloped]{} (x4);
+\draw[->] (x3) to node[above,near start,sloped]{} (y4);
+\draw[->] (y1) to node[above, near start,sloped]{}(x2); 
+\draw[->] (y1) to node[below,midway,sloped]{}(y2);  
+\draw[->] (y2) to node[above, near start,sloped]{} (x3);
+\draw[->] (y2) to node[below,midway,sloped]{} (y3);
+\draw[->] (y3) to node[above, near start,sloped]{} (x4);
+\draw[->] (y3) to node[below,near start,sloped]{} (y4);
+
+\draw[<->,bend right,dashed] (x1) to node[left,sloped,rotate=180,yshift=10pt,xshift=25pt]{} (y1);
+
+\node[latent] (etax1) at (4,2) {$\eta_{x}$};
+\draw[->] (etax1) to node[above, midway,sloped]{} (x1);     
+\draw[->] (etax1) to node[left, near start]{}(x2); 
+\draw[->] (etax1) to node[left, near start]{}(x3); 
+\draw[->] (etax1) to node[below, near start]{}(x4);
+\draw [->, bend right=90,out=-50, looseness=1.5] (etax1) to node[above, near start,sloped]{} (y1);
+
+\node[latent] (etay0) at (4,-5) {$\eta_{y}$};
+\draw[->] (etay0) to node[below, near start,sloped]{} (y1);     
+\draw[->] (etay0) to node[left, near start]{} (y2); 
+\draw[->] (etay0) to node[above, near start]{} (y3);
+\draw[->] (etay0) to node[below, near start]{} (y4);
+\draw [->, bend left=90, out=50, looseness=1.5] (etay0) to node[below, near start,sloped]{} (x1);
+
+\draw[<->,bend left,dashed, out=90, in=90, looseness=3] (etax1) to (etay0);
+
+\end{tikzpicture}
+```
+
+### Nonlinear Model with Nonadditive Unobserved Heterogeneity
+
+The following figure displays the causal structure of a nonlinear
+dynamic panel data model with nonadditive heterogeneity and is taken
+from @gische_west_voelkle_2023
+
+```{tikz, fig.ext = 'png', echo = FALSE}
+\usetikzlibrary{shapes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{arrows.meta}
+\begin{tikzpicture}[latent/.style={ellipse,draw=black!80,dashed,thick,inner sep=2,text centered}]
+             
+\node (x1) at (0,0) {$X_{1}$};
+\node (x2) at (3,0) {$X_{2}$};          
+\node (x3) at (6,0) {$X_{3}$};
+\node (x4) at (9,0) {$X_{4}$};
+
+\node (y1) at (0,-3) {$Y_{1}$};
+\node (y2) at (3,-3) {$Y_{2}$};
+\node (y3) at (6,-3) {$Y_{3}$};
+\node (y4) at (9,-3) {$Y_{4}$};
+
+\node (zx) at (-2,2) {$Z_1$};
+\draw[->,gray!70] (zx) to node[above,midway]{} (x1); 
+\draw[->,gray!70] (zx) to node[above,midway]{} (x2); 
+\draw[->,gray!70] (zx) to node[above,midway]{} (x3);
+\draw[->,gray!70] (zx) to node[above,midway]{} (x4);
+
+
+\node (zxy) at (-2,-1.5) {$Z_2$};
+\draw[->,gray!70] (zxy) to node[above,midway]{} (x1); 
+\draw[->,gray!70] (zxy) to node[above,midway]{} (x2); 
+\draw[->,gray!70] (zxy) to node[above,midway]{} (x3);
+\draw[->,gray!70] (zxy) to node[above,midway]{} (x4);
+\draw[->,gray!70] (zxy) to node[above,midway]{} (y1); 
+\draw[->,gray!70] (zxy) to node[above,midway]{} (y2); 
+\draw[->,gray!70] (zxy) to node[above,midway]{} (y3);
+\draw[->,gray!70] (zxy) to node[above,midway]{} (y4);
+
+
+
+\node (zy) at (-2,-5) {$Z_3$};
+    
+\draw[->,gray!70] (zy) to node[above,midway]{} (y1); 
+\draw[->,gray!70] (zy) to node[above,midway]{} (y2); 
+\draw[->,gray!70] (zy) to node[above,midway]{} (y3);
+\draw[->,gray!70] (zy) to node[above,midway]{} (y4);
+
+\draw[<->,bend right,dashed,gray!70] (zx) to node[left,sloped,rotate=180,yshift=10pt,xshift=25pt]{} (zxy);
+\draw[<->,bend right,dashed,gray!70] (zx) to node[left,sloped,rotate=180,yshift=10pt,xshift=25pt]{} (zy);
+\draw[<->,bend right,dashed,gray!70] (zxy) to node[left,sloped,rotate=180,yshift=10pt,xshift=25pt]{} (zy);
+
+\draw[->,gray!70] (zx) to node[above,midway]{} (y1);
+\draw[->,gray!70] (zy) to node[above,midway]{} (x1);
+ 
+\draw[->] (x1) to node[above,midway,sloped]{} (x2); %\scriptsize $c_{x_2x_1}$
+\draw[->] (x1) to node[above,near start,sloped]{} (y2); 
+\draw[->] (x2) to node[above,midway,sloped]{} (x3); % \scriptsize $c_{x_3x_2}$
+\draw[->] (x2) to node[above,near start,sloped]{} (y3); 
+\draw[->] (x3) to node[above,near start,sloped]{} (x4); %\scriptsize $c_{x_4x_3}$
+\draw[->] (x3) to node[above,near start,sloped]{} (y4);
+\draw[->] (y1) to node[above, very near start,sloped]{}(x2); %\scriptsize $c_{x_2y_1}$
+\draw[->] (y1) to node[below,midway,sloped]{}(y2);  % \scriptsize $c_{y_2y_1}$
+\draw[->] (y2) to node[above, near start,sloped]{} (x3); %\scriptsize $c_{x_3y_2}$
+\draw[->] (y2) to node[below,midway,sloped]{} (y3); %\scriptsize $c_{y_3y_2}$
+\draw[->] (y3) to node[above, near start,sloped]{} (x4); %\scriptsize $c_{x_4y_3}$
+\draw[->] (y3) to node[below,near start,sloped]{} (y4); %\scriptsize $c_{y_4y_3}$
+
+\draw[<->,bend right,dashed] (x1) to node[left,sloped,rotate=180,yshift=10pt,xshift=25pt]{} (y1);
+
+
+\node[latent] (etax0) at (2,2) {$\eta_{x}$};
+
+\draw[->] (etax0) to node[above, midway,sloped]{} (x1); 
+\draw[->] (etax0) to node[left, near start,gray!70]{}(x2); 
+\draw[->] (etax0) to node[left, near start,gray!70]{}(x3); 
+\draw[->] (etax0) to node[below, near start,gray!70]{}(x4);
+
+
+\node[latent] (etay0) at (2,-5) {$\eta_{y}$};
+
+\draw[->] (etay0) to node[below, near start,sloped]{} (y1);     
+\draw[->] (etay0) to node[left, near start, gray!70]{}  (y2); 
+\draw[->] (etay0) to node[above, near start, gray!70]{} (y3);
+\draw[->] (etay0) to node[below, near start, gray!70]{} (y4);
+
+\node[latent] (etax1) at (6,2) {$\eta_{xy}$};
+
+\draw[->] (etax1) to node[above,midway]{} (x1);
+\draw[->] (etax1) to node[above,midway]{} (x2); 
+\draw[->] (etax1) to node[above,midway]{} (x3);
+\draw[->] (etax1) to node[above,midway]{} (x4);
+
+\node[latent] (etay1) at (6,-5) {$\eta_{yx}$};
+
+\draw[->] (etay1) to node[above,midway]{} (y1);
+\draw[->] (etay1) to node[above,midway]{} (y2); 
+\draw[->] (etay1) to node[above,midway]{} (y3);
+\draw[->] (etay1) to node[above,midway]{} (y4);
+
+
+\draw[<->,bend right,dashed,looseness=0.5] (etay0) to node[left,sloped,rotate=180]{} (etay1);
+\draw[<->,bend left,dashed,looseness=0.5] (etax0) to node[left,sloped,rotate=180]{} (etax1);
+\draw[<->,bend left=120, dashed, looseness=4.5] (etax0) to (etay0);
+\draw[<->,bend left=80,dashed, looseness=1.8] (etax1) to (etay1);
+\draw[<->,bend left=80, out=100, dashed, looseness=3] (etax0) to (etay1);
+\draw[<->,bend right=80, out=-100, dashed, looseness=3] (etay0) to (etax1);
+
+
+
+
+\draw[<->,bend right,dashed] (x1) to node[left,sloped,rotate=180,yshift=10pt,xshift=25pt]{} (y1);
+\draw [->, bend right=90,out=-80, looseness=1.5] (etax0) to node[above, near start,sloped]{} (y1);
+\draw [->, bend right=90,out=-80, looseness=1.6] (etax1) to node[above, near start,sloped]{} (y1);
+\draw [->, bend left=90, out=80, looseness=1.5] (etay0) to node[below, near start,sloped]{} (x1);
+\draw [->, bend left=90, out=90, looseness=1.6] (etay1) to node[below, near start,sloped]{} (x1);   
+\end{tikzpicture}
+```
+
+## The `fit_panel_sem`-Function
+
+The central function of the package is the `fit_panel_sem`-function
+which allows users to (i) specify a model, (ii) provide the data, and
+(iii) fit the model to the data. The following code chunk displays a
+minimal example of a function when only mandatory arguments are
+specified.
+
+```{r message=FALSE, eval=FALSE, warning=FALSE}
+panelSEM_object <- fit_panel_sem(data = data,
+                                 time_varying_variables = time_varying_variables,
+                                 time_invariant_variables = time_invariant_variables,
+                                 linear = linear,
+                                 heterogeneity = heterogeneity)
+```
+
+The mandatory arguments are listed below and will be explained in detail
+throughout the subsequent sections:
+
+- `data`: the data set    
+- `time_varying_variables`: a list of time-varying observed variables 
+- `time_invariant_variables`: a list of time-invariant observed covariates      
+- `linear`: an argument specifying if the model is linear or nonlinear    
+- `heterogeneity`: an argument specifying the type of unobserved heterogeneity
+
+
+### The `data` argument
+
+The data set needs to be provided as a `.txt`-file and organized in the
+wide format. 
+
+### The `time_varying_variables` argument  
+
+### The `time_invariant_variables` argument  
+
+### The `linear` and the `unobserved_heterogeneity` argument  
+
+```{tikz linear_heterogeneity, fig.ext = 'png', echo = FALSE}
+\usetikzlibrary{shapes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{arrows.meta}
+\begin{tikzpicture}[align=center,
+box/.style={draw,rectangle,minimum width = 3.5cm, minimum height= 1.5cm, text width=3.5cm, align=left}]
+\matrix (conmat) [row sep=.1cm,column sep=.1cm] {
+    \node (tpos) [box,
+    label=left:\texttt{linear == TRUE},
+    label=above:\texttt{"homogeneous"},
+    ] {observed variables enter equation linear \\\vspace{16pt} no unobserved heterogeneity (no $\eta$-terms)\\\vspace{16pt} covariances across occasions and within occasions (see Linear Model without Unobserved Heterogeneity)};
+    &
+    \node (fneg) [box,
+    label=above:\texttt{"additive"},
+    ] {observed variables enter equation linear \\\vspace{16pt} additive unobserved heterogeneity (additive $\eta$-terms)};
+    &
+    \node (fneg1) [box,
+    label=above:\texttt{"cross-lagged"}
+    ] {observed variables enter equation linear \\\vspace{3pt} nonadditive unobserved heterogeneity (multiplicative $\eta$-terms)};   
+    \\
+    \node (fpos) [box,
+    label=left:\texttt{linear == FALSE}] 
+    {observed variables enter equation nonlinear (product terms) \\\vspace{16pt} no unobserved heterogeneity (no $\eta$-terms)};
+    &
+    \node (tneg) [box,
+    ] {observed variables enter equation nonlinear (product terms)\\\vspace{16pt} additive unobserved heterogeneity (additive $\eta$-terms)};
+    &
+    \node (tneg1) 
+    [box,
+    ] {observed variables enter equation nonlinear (product terms)\\\vspace{3pt} nonadditive unobserved heterogeneity (multiplicative $\eta$-terms)};
+    \\
+};
+%\node [left=.05cm of conmat,anchor=center,text width=1.5cm] {\textbf{average vs. \\ person-specific}};
+%\node [above=.05cm of conmat] {\textbf{forecast vs. prediction}};
+\end{tikzpicture}
+```
+
+Additionally to the basic combinations displayed in the figure above, a model can exhibit more than one type of unobserved heterogeneity. Thus, the argument `heterogeneity` can take the value  `heterogeneity == c("additive","cross-lagged")`. We now illustrate the different types of equations.
+
+### Linear, homogeneous
+
+$$
+Y_{t} = c_{yx}X_{t-1}+c_{yy}Y_{t-1}+c_{yz_{2}}Z_2+c_{yz_{3}}Z_3+\varepsilon_{yt}
+$$
+
+The equation is linear in the observed variables (because all observed variables are enter the equation in a linear way) and homogeneous (there is no unobserved person-specific heterogeneity; there are no $\eta$-terms).
+
+### Linear, additive heterogeneity
+
+$$
+Y_{t} = c_{yx}X_{t-1}+c_{yy}Y_{t-1}+c_{yz_{2}}Z_2+c_{yz_{3}}Z_3+\eta_y+\varepsilon_{yt}
+$$
+
+The equation is linear in the observed variables (because all observed variables are enter the equation in a linear way) and the unobserved heterogeneity is additive (because there the $\eta$-term enters the equation in an additive way).
+
+### Nonlinear, homogeneous
+
+$$
+Y_{t} = (c_{yx} + c_{yxz_2}Z_2 + c_{yxz_3}Z_3)X_{t-1}+c_{yy}Y_{t-1}+c_{yz_2}Z_2+c_{yz_3}Z_3+\varepsilon_{yt}
+$$
+
+The equation is nonlinear in the observed variables (because there are multiplicative terms of observed variables, namely $Z_2X_{t-1}$) and homogeneous (there is no unobserved person-specific heterogeneity; there are no $\eta$-terms).
+
+### Nonlinear, additive heterogeneity
+
+$$
+Y_{t} = (c_{yx} + c_{yxz_2}Z_2 + c_{yxz_3}Z_3)X_{t-1}+c_{yy}Y_{t-1}+c_{yz_2}Z_2+c_{yz_3}Z_3+\eta_y+\varepsilon_{yt}
+$$
+
+The equation is nonlinear in the observed variables (because there are multiplicative terms of observed variables, namely $Z_2X_{t-1}$) and the unobserved heterogeneity is additive (because there the $\eta$-term enters the equation in an additive way).
+
+### Nonlinear, additive  and cross-lagged heterogeneity
+
+$$
+Y_{t} = (c_{yx} + c_{yxz_2}Z_2 + c_{yxz_3}Z_3)X_{t-1}+c_{yy}Y_{t-1}+c_{yz_2}Z_2+c_{yz_3}Z_3+\eta_{y}+\eta_{yx}X_{t-1}+\varepsilon_{yt}
+$$
+
+The equation is nonlinear in the observed variables (because there are multiplicative terms of observed variables, namely $Z_2X_{t-1}$) and the unobserved heterogeneity is both additive (because the term $\eta_y$ enters the equation in an additive way) and there is also unobserved heterogeneity in the cross-lagged coefficient (because the term $\eta_{yx}$ enters the equation in a multiplicative way, namely $\eta_{yx}X_{t-1}$).
+
+
+## References  
+
