@@ -55,8 +55,7 @@ Admissible values: 0: no output (default), 1: user messages,
 2: debugging-relevant messages.}
 }
 \value{
-An object of class \code{panelSEM} for which several methods
-are available including \code{\link{summary.panelSEM}} and
+An object of class \code{panelSEM}
 \code{\link{print.panelSEM}}.
 }
 \description{

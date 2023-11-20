@@ -33,8 +33,7 @@
 #' @param verbose Integer number describing the verbosity of console output.
 #' Admissible values: 0: no output (default), 1: user messages,
 #' 2: debugging-relevant messages.
-#' @return An object of class \code{panelSEM} for which several methods
-#' are available including \code{\link{summary.panelSEM}} and
+#' @return An object of class \code{panelSEM}
 #' \code{\link{print.panelSEM}}.
 #' @references Gische, C., Voelkle, M.C. (2022) Beyond the Mean: A Flexible
 #' Framework for Studying Causal Effects Using Linear Models. Psychometrika 87,
