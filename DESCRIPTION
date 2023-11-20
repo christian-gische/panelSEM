@@ -18,9 +18,9 @@ Depends:
     OpenMx,
     lavaan,
     mvtnorm,
-    R (>= 2.10),
     logger,
-    tidyr
+    tidyr,
+    R (>= 2.10)
 Suggests: 
     testthat (>= 3.0.0),
     mxsem
